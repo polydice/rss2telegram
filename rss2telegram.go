@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"cloud.google.com/go/firestore"
-	md "github.com/Skarlso/html-to-markdown"
 	"github.com/mmcdole/gofeed"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -22,10 +21,7 @@ var (
 	// automatically set by the Cloud Functions runtime.
 	projectID = os.Getenv("GCP_PROJECT")
 	// client is a global Firestore client, initialized once per instance.
-	client    *firestore.Client
-	converter = md.NewConverter("", true, &md.Options{
-		EmDelimiter: "*",
-	})
+	client *firestore.Client
 )
 
 func init() {
@@ -159,19 +155,12 @@ func writePublishedAt(ctx context.Context, client *firestore.Client, chatID, rss
 }
 
 func sendToTelegram(botAPIToken, chatID string, item *gofeed.Item) error {
-	content, err := converter.ConvertString(item.Content)
-	if err != nil {
-		log.Println(err)
-		content = item.Content
-	}
-
-	text := fmt.Sprintf("*%s*\n\n%s", item.Title, content)
+	text := fmt.Sprintf("*%s*\n\n%s", item.Title, item.Link)
 
 	resp, err := http.PostForm(fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botAPIToken), map[string][]string{
-		"chat_id":                  {chatID},
-		"text":                     {text},
-		"parse_mode":               {"markdown"},
-		"disable_web_page_preview": {"true"},
+		"chat_id":    {chatID},
+		"text":       {text},
+		"parse_mode": {"markdown"},
 	})
 	if err != nil {
 		return err
